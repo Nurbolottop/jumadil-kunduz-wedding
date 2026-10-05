@@ -182,6 +182,20 @@ footer{text-align:center;color:var(--muted);font-size:.72rem;letter-spacing:.3em
 .where{display:block;font-size:.78rem;color:var(--muted);letter-spacing:.04em}
 .deadline{margin-top:18px;display:inline-block;font-family:var(--display);font-size:1.3rem;color:var(--rose-deep);border-block:1px solid var(--rose);padding:6px 18px}
 
+/* ---------- MUSIC ---------- */
+#yt{position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none;z-index:-1}
+.music{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:10;width:52px;height:52px;border-radius:50%;
+  display:grid;place-items:center;cursor:pointer;color:var(--rose-deep);background:rgba(255,255,255,.85);border:1px solid var(--rose);
+  box-shadow:0 14px 30px -14px rgba(110,70,90,.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:transform .35s var(--ease)}
+.music:hover{transform:scale(1.06)}
+.music:focus-visible{outline:2px solid var(--plum);outline-offset:3px}
+.music svg{width:22px;height:22px}
+.music .off{display:none}
+.music.muted .on{display:none}
+.music.muted .off{display:block}
+.music.playing{animation:spin 6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
 /* ---------- ANIMATION ---------- */
 @media (prefers-reduced-motion:no-preference){
   .hero .arch{animation:archIn 1.4s var(--ease) both}
@@ -361,6 +375,12 @@ footer{text-align:center;color:var(--muted);font-size:.72rem;letter-spacing:.3em
   <footer>Биз сиздерди күтөбүз · 31 · 10 · 2026</footer>
 </main>
 
+<div id="yt" aria-hidden="true"></div>
+<button class="music muted" id="music" type="button" aria-label="Музыка">
+  <svg class="on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/></svg>
+  <svg class="off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l11-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="17" cy="16" r="3"/><line x1="3" y1="3" x2="21" y2="21"/></svg>
+</button>
+
 <script>
 // split names into letters for the load animation
 document.querySelectorAll("[data-split]").forEach(el => {
@@ -460,6 +480,41 @@ if (document.documentElement.classList.contains("anim")) {
   }
   addEventListener("resize", resize);
   resize(); requestAnimationFrame(loop);
+})();
+
+// background music (YouTube): autoplays muted, sound turns on at the first tap/click
+(function(){
+  const VIDEO = "UMMZWMbdv2w";
+  const btn = document.getElementById("music");
+  let player, ready = false, on = false, userOff = false;
+  function render(){ btn.classList.toggle("muted", !on); btn.classList.toggle("playing", on); }
+  function soundOn(){
+    if (!ready) return;
+    player.unMute(); player.setVolume(60); player.playVideo();
+    on = true; render();
+  }
+  function soundOff(){
+    if (!ready) return;
+    player.pauseVideo(); on = false; render();
+  }
+  function firstGesture(e){
+    if (e.target.closest && e.target.closest("#music")) return;
+    if (!userOff) soundOn();
+    if (on) ["click","touchend","keydown"].forEach(t => removeEventListener(t, firstGesture, true));
+  }
+  ["click","touchend","keydown"].forEach(t => addEventListener(t, firstGesture, true));
+  btn.addEventListener("click", () => { if (on) { userOff = true; soundOff(); } else { userOff = false; soundOn(); } });
+
+  window.onYouTubeIframeAPIReady = function(){
+    player = new YT.Player("yt", {
+      width: 1, height: 1, videoId: VIDEO,
+      playerVars: { autoplay: 1, mute: 1, loop: 1, playlist: VIDEO, controls: 0, playsinline: 1, rel: 0 },
+      events: { onReady: e => { ready = true; e.target.mute(); e.target.playVideo(); } }
+    });
+  };
+  const s = document.createElement("script");
+  s.src = "https://www.youtube.com/iframe_api";
+  document.head.appendChild(s);
 })();
 
 </script>
