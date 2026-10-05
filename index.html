@@ -182,6 +182,27 @@ footer{text-align:center;color:var(--muted);font-size:.72rem;letter-spacing:.3em
 .where{display:block;font-size:.78rem;color:var(--muted);letter-spacing:.04em}
 .deadline{margin-top:18px;display:inline-block;font-family:var(--display);font-size:1.3rem;color:var(--rose-deep);border-block:1px solid var(--rose);padding:6px 18px}
 
+/* ---------- RSVP ---------- */
+.rsvp{max-width:560px;margin:0 auto}
+.rsvp form{display:grid;gap:16px;margin-top:30px;text-align:left}
+.field label,.field legend{display:block;font-size:.68rem;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;padding:0}
+.field input,.field textarea,.field select{width:100%;font:400 1rem/1.4 var(--body);color:var(--plum);background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px 16px;outline:none;transition:border-color .3s,box-shadow .3s}
+.field textarea{min-height:90px;resize:vertical}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:var(--rose-deep);box-shadow:0 0 0 4px rgba(201,143,149,.18)}
+fieldset.field{border:0;margin:0;padding:0;min-width:0}
+.choice{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.choice label{margin:0;cursor:pointer}
+.choice input{position:absolute;opacity:0;pointer-events:none}
+.choice span{display:flex;align-items:center;justify-content:center;min-height:52px;padding:8px 12px;text-align:center;border-radius:16px;border:1px solid var(--rose);background:rgba(255,255,255,.8);
+  font:400 .95rem/1.25 var(--body);letter-spacing:0;text-transform:none;color:var(--plum);transition:background .3s,color .3s,border-color .3s}
+.choice input:checked+span{background:var(--rose-deep);border-color:var(--rose-deep);color:#fff}
+.choice input:focus-visible+span{outline:2px solid var(--plum);outline-offset:2px}
+.rsvp .btn{width:100%;margin-top:4px}
+.rsvp .btn[disabled]{opacity:.6;pointer-events:none}
+.rsvp-msg{min-height:1.5em;text-align:center;color:var(--plum-soft)}
+.rsvp-msg.err{color:#b4434f}
+.rsvp-done{margin-top:30px;font-family:var(--display);font-size:1.6rem;font-style:italic;color:var(--rose-deep)}
+
 /* ---------- MUSIC ---------- */
 #yt{position:fixed;left:0;bottom:0;width:1px;height:1px;opacity:0;pointer-events:none;z-index:-1}
 .music{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:10;width:52px;height:52px;border-radius:50%;
@@ -363,6 +384,41 @@ footer{text-align:center;color:var(--muted);font-size:.72rem;letter-spacing:.3em
     </div>
   </section>
 
+  <!-- RSVP -->
+  <section class="section wrap center" id="rsvp">
+    <div class="rsvp panel" data-reveal>
+      <p class="eyebrow">Анкета</p>
+      <h2 class="h2">Келесизби?</h2>
+      <p class="lead">Сураныч, тойго келериңизди алдын ала билдирип коюңуз</p>
+      <form id="rsvp-form" novalidate>
+        <div class="field">
+          <label for="r-name">Аты-жөнүңүз</label>
+          <input id="r-name" name="guest" type="text" autocomplete="name" required maxlength="80">
+        </div>
+        <fieldset class="field">
+          <legend>Тойго келесизби?</legend>
+          <div class="choice">
+            <label><input type="radio" name="go" value="yes" checked><span>Ооба, келем ❤</span></label>
+            <label><input type="radio" name="go" value="no"><span>Тилекке каршы, келе албайм</span></label>
+          </div>
+        </fieldset>
+        <div class="field" id="r-count-wrap">
+          <label for="r-count">Канча киши болосуздар?</label>
+          <select id="r-count" name="count">
+            <option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="r-note">Каалоо же тилек (милдеттүү эмес)</label>
+          <textarea id="r-note" name="note" maxlength="500"></textarea>
+        </div>
+        <button class="btn solid" type="submit">Жөнөтүү</button>
+        <p class="rsvp-msg" id="rsvp-msg" role="status"></p>
+      </form>
+      <p class="rsvp-done" id="rsvp-done" hidden>Рахмат! Жообуңуз кабыл алынды ❤</p>
+    </div>
+  </section>
+
   <!-- FINALE -->
   <section class="finale wrap">
     <figure class="couple couple-end" data-reveal="zoom"><img src="couple-2.jpg" alt="Жумадил жана Кундуз" width="1050" height="1400" loading="lazy"></figure>
@@ -480,6 +536,45 @@ if (document.documentElement.classList.contains("anim")) {
   }
   addEventListener("resize", resize);
   resize(); requestAnimationFrame(loop);
+})();
+
+// RSVP → Telegram group
+(function(){
+  const BOT = "8601114042:AAE_SR_ZU7_K50ayK7PNtCRHSpz7CALpXuM";
+  const CHAT = "-5517156016";
+  const form = document.getElementById("rsvp-form");
+  const msg = document.getElementById("rsvp-msg");
+  const countWrap = document.getElementById("r-count-wrap");
+  const btn = form.querySelector("button");
+  form.addEventListener("change", () => { countWrap.hidden = form.go.value !== "yes"; });
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    const name = form.guest.value.trim();
+    if (!name) { msg.className = "rsvp-msg err"; msg.textContent = "Сураныч, атыңызды жазыңыз"; form.guest.focus(); return; }
+    const yes = form.go.value === "yes";
+    const note = form.note.value.trim();
+    const text = [
+      yes ? "✅ КЕЛЕТ" : "❌ КЕЛБЕЙТ",
+      "👤 " + name,
+      yes ? "👥 Канча киши: " + form.count.value : "",
+      note ? "💬 " + note : ""
+    ].filter(Boolean).join("\n");
+    btn.disabled = true; msg.className = "rsvp-msg"; msg.textContent = "Жөнөтүлүүдө…";
+    try {
+      const r = await fetch("https://api.telegram.org/bot" + BOT + "/sendMessage", {
+        method: "POST",
+        body: new URLSearchParams({ chat_id: CHAT, text })
+      });
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.description);
+      form.hidden = true;
+      document.getElementById("rsvp-done").hidden = false;
+    } catch (err) {
+      btn.disabled = false;
+      msg.className = "rsvp-msg err";
+      msg.textContent = "Ката кетти, кайра аракет кылыңыз";
+    }
+  });
 })();
 
 // background music (YouTube): autoplays muted, sound turns on at the first tap/click
